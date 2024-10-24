@@ -41,19 +41,6 @@ const Ticket = {
             callback(null, result[0]);
         });
     },
-    
-    // getTotalTicketSold: (payment_status, callback) => {
-    //     const query = `SELECT SUM(ticket_count) AS total_tickets_sold FROM tickets WHERE payment_status = ?`;
-    //     const params = [payment_status];
-    //     connection.query(query, params, (err, result) => {
-    //         if (err) return callback(err);
-    //         if (result.length === 0 || result[0].total_tickets_sold === null) {
-    //             return callback(new Error('No tickets found or no tickets sold with this status'));
-    //         }
-    //         callback(null, result[0].total_tickets_sold);
-    //     });
-    // },
-    
 
     getEmailById: (id, callback) => {
         const query = `SELECT email FROM tickets WHERE id = ?`;
