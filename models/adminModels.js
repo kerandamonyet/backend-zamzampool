@@ -108,4 +108,14 @@ adminModel.getAll = () => {
     });
 };
 
+adminModel.getTicketsByStatus = (payment_status) => {
+    return new Promise((resolve, reject) => {
+        const query = `SELECT ticket_type, ticket_count FROM tickets WHERE payment_status = ?`;
+        connection.query(query, [payment_status], (err, result) => {
+            if (err) return reject(err);
+            resolve(result);
+        });
+    });
+};
+
 module.exports = adminModel;

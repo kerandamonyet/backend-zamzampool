@@ -140,5 +140,49 @@ adminController.delete = async (req, res) => {
         });
     }
 };
+// getTotalTicketSold
+adminController.getTotalTicketSold = async (req, res) => {
+    try {
+        const { payment_status } = req.params; 
+
+        // Query untuk mengambil jenis tiket dan jumlah tiket berdasarkan status pembayaran
+        const tickets = await adminModel.getTicketsByStatus(payment_status);
+
+        if (tickets.length === 0) {
+            return res.status(404).json({
+                message: `No tickets found with status '${payment_status}'`
+            });
+        }
+
+        // Harga tiket hardcoded
+        const ticketPrices = {
+            premium: 30000,
+            regular: 18000
+        };
+
+        let totalTicketsSold = 0;
+        let totalRevenue = 0;
+
+        // Menghitung total tiket dan total pendapatan berdasarkan jenis tiket
+        tickets.forEach(ticket => {
+            const price = ticketPrices[ticket.ticket_type] || 0;  // Mendapatkan harga tiket
+            totalTicketsSold += ticket.ticket_count;              // Jumlah tiket terjual
+            totalRevenue += ticket.ticket_count * price;          // Pendapatan dari tiket tersebut
+        });
+
+        return res.status(200).json({
+            message: `Total tickets sold with status '${payment_status}'`,
+            totalTicketsSold: totalTicketsSold,
+            totalRevenue: totalRevenue
+        });
+    } catch (error) {
+        console.error('Error fetching total tickets sold:', error);
+        return res.status(500).json({
+            message: 'Failed to retrieve total tickets sold',
+            error: error.message
+        });
+    }
+};
+
 
 module.exports = adminController;
