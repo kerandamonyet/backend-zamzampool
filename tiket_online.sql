@@ -32,7 +32,7 @@ CREATE TABLE `tickets` (
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `phone` varchar(20) NOT NULL,
-  `entry_date` date NOT NULL DEFAULT current_timestamp(),
+  `entry_date` DATETIME NOT NULL DEFAULT current_timestamp(),
   `ticket_count` int(5) NOT NULL,
   `ticket_type` enum('premium','reguler') NOT NULL,
   `payment_status` enum('pending','completed') DEFAULT 'pending',
