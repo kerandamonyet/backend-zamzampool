@@ -143,14 +143,36 @@ exports.createTicket = [
                     }
                 };
 
+<<<<<<< HEAD
                 snap.createTransaction(parameter)
                     .then((transaction) => {
                         const redirectUrl = transaction.redirect_url;
+=======
+                if (!snap) {
+                    return res.status(500).send({
+                        status: 'error',
+                        statusCode: '500',
+                        error: {
+                            message: 'Payment gateway is not initialized. Please try again later.'
+                        }
+                    });
+                }
+                
+                snap.createTransaction(parameter)
+                    .then((transaction) => {
+                        const transactionToken = transaction.token;
+                        const redirectUrl = transaction.redirect_url;
+                        
+>>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
 
                         res.status(200).json({ 
                             status: 'success',
                             statusCode: '200',
                             data: {
+<<<<<<< HEAD
+=======
+                                transaction_token: transactionToken,
+>>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
                                 redirect_url: redirectUrl
                             }
                         });
@@ -217,6 +239,10 @@ exports.createPayment = [
 
             snap.createTransaction(parameter)
                 .then((transaction) => {
+<<<<<<< HEAD
+=======
+                    const transactionToken = transaction.token;
+>>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
                     const redirectUrl = transaction.redirect_url;
 
                     // Kirim URL redirect tanpa referensi siklik
@@ -224,6 +250,10 @@ exports.createPayment = [
                         status: 'success',
                         statusCode: '200',
                         data: {
+<<<<<<< HEAD
+=======
+                            transaction_token: transactionToken,
+>>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
                             redirect_url: redirectUrl
                         }
                      });

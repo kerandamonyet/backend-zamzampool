@@ -12,6 +12,17 @@ const Ticket = {
         });
     },
 
+<<<<<<< HEAD
+=======
+    updateTransactionToken: (ticketId, transactionToken, callback) => {
+        const sql = `UPDATE tickets SET transaction_token = ? WHERE id = ?`;
+        connection.query(sql, [transactionToken, ticketId], (err, result) => {
+            if (err) return callback({ message: 'Failed to update transaction token', details: err });
+            callback(null, result);
+        });
+    },
+    
+>>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
     updatePaymentStatus: (id, barcode, entry_date, callback) => {
         const expiredDate = new Date(entry_date);
         expiredDate.setDate(expiredDate.getDate() + 3);
