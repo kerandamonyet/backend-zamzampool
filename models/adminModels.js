@@ -19,11 +19,7 @@ adminModel.create = (email, username, hashedPassword, password_salt, roleId, sta
 
             // Jika email belum ada, lanjutkan proses insert
             const query = `
-<<<<<<< HEAD
-                INSERT INTO Admin (email, username, password, password_salt, roleId, statusId)
-=======
                 INSERT INTO Admin (email, username, user_password, password_salt, roleId, statusId)
->>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
                 VALUES (?, ?, ?, ?, ?, ?)
             `;
             connection.query(query, [email, username, hashedPassword, password_salt, roleId, statusId], (error, results) => {
@@ -39,11 +35,7 @@ adminModel.create = (email, username, hashedPassword, password_salt, roleId, sta
 // Update Admin
 adminModel.update = (id, updateData) => {
     return new Promise((resolve, reject) => {
-<<<<<<< HEAD
-        const { email, username, password, password_salt, roleId, statusId } = updateData;
-=======
         const { email, username, user_password, password_salt, roleId, statusId } = updateData;
->>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
 
         // Cek apakah email sudah ada di database untuk user lain
         const checkEmailQuery = `SELECT * FROM Admin WHERE email = ? AND id != ?`;
@@ -62,13 +54,8 @@ adminModel.update = (id, updateData) => {
             let values = [email, username, roleId, statusId, id];
 
             if (password && password_salt) {
-<<<<<<< HEAD
-                query = `UPDATE Admin SET email = ?, username = ?, password = ?, password_salt = ?, roleId = ?, statusId = ? WHERE id = ?`;
-                values = [email, username, password, password_salt, roleId, statusId, id];
-=======
                 query = `UPDATE Admin SET email = ?, username = ?, user_password = ?, password_salt = ?, roleId = ?, statusId = ? WHERE id = ?`;
                 values = [email, username, user_password, password_salt, roleId, statusId, id];
->>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
             }
 
             connection.query(query, values, (error, results) => {
