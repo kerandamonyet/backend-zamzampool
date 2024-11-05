@@ -7,10 +7,12 @@
 
 # ENDPOINT total tiket terjual
 api/admin-total/:payment_status
+
 ex: api/admin-total/completed
 
 # Akses akun Midtrans
-email: mz78987@gmail.com \n
+email: mz78987@gmail.com
+
 pass: Midtranstop123
 
 * Untuk Payment Gateway perhatikan ServerKey, ClientKey
