@@ -10,6 +10,7 @@ const cors = require('cors');
 const app = express();
 const compression = require("compression");
 const helmet = require("helmet");
+const RateLimit = require("express-rate-limit");
 
 require('dotenv').config();
 
@@ -28,7 +29,6 @@ app.use(
 );
   
 // Set up rate limiter: maximum of twenty requests per minute
-const RateLimit = require("express-rate-limit");
 const limiter = RateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 20,
