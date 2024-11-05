@@ -8,20 +8,6 @@ const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middleware/authMiddleware'); // Import middleware
 const cors = require('cors');
 const app = express();
-<<<<<<< HEAD
-require('dotenv').config();
-
-app.use(cors());
-app.use(bodyParser.json());
-
-// Terapkan middleware autentikasi secara global KECUALI untuk login
-app.use((req, res, next) => {
-    if (req.path === '/api/auth-login') {
-        return next(); // Abaikan middleware untuk rute login
-    }
-    authMiddleware.authenticateAdmin(req, res, next); // Terapkan middleware ke rute lain
-});
-=======
 const compression = require("compression");
 const helmet = require("helmet");
 
@@ -51,25 +37,22 @@ const limiter = RateLimit({
 app.use(limiter);
 
 // Daftarkan rute auth terlebih dahulu
-app.use('/api/auth', authRoutes);
+//DISAMAKEUN BAE IEU NYA
+// app.use('/api/auth', authRoutes);
 
 // Terapkan middleware autentikasi hanya pada rute /api/auth/login
-app.use('/api/auth/login', authMiddleware.authenticateAdmin);
->>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
+// LOGIN TEU USAH PAKE authMiddleware.authenticateAdmin NANTI LOGIN NA KEHALANG KUDU PAKE TOKEN
+// SEDANGKAN TOKEN DAPETNA DARI LOGIN
+// app.use('/api/auth/login', authMiddleware.authenticateAdmin);
 
 // Daftarkan rute-rute lainnya
+app.use('/api', authRoutes);
 app.use('/api', ticketRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', statusRoutes);
 app.use('/api', roleRoutes);
-<<<<<<< HEAD
-app.use('/api', authRoutes);
-
-const PORT = process.env.APP_PORT || 5000;
-=======
 
 const PORT = 5000;
->>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
