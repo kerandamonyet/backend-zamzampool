@@ -14,20 +14,14 @@
     "@zxing/library": "^0.21.3",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
-<<<<<<< HEAD
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "express-validator": "^7.2.0",
-=======
     "compression": "^1.7.5",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "express-validator": "^7.2.0",
     "helmet": "^8.0.0",
->>>>>>> 720a17c (Add Compression, Helmet, RateLimit)
     "jsonwebtoken": "^9.0.2",
     "mailgun.js": "^10.2.3",
     "mailtrap": "^3.4.0",
