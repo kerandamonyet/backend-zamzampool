@@ -10,7 +10,7 @@ api/admin-total/:payment_status
 ex: api/admin-total/completed
 
 # Akses akun Midtrans
-email: mz78987@gmail.com 
+email: mz78987@gmail.com \n
 pass: Midtranstop123
 
 * Untuk Payment Gateway perhatikan ServerKey, ClientKey
