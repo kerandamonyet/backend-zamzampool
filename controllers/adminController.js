@@ -5,20 +5,21 @@ const adminController = {};
 // Create Admin
 adminController.create = async (req, res) => {
     try {
-        const { email, username, user_password, roleId, statusId } = req.body;
-
+        const { email, username, password, roleId, statusId } = req.body;
+        console.log(email, username, password, roleId, statusId);
+        
         // Generate salt
         const saltRounds = 10;
         const password_salt = await bcrypt.genSalt(saltRounds);
 
         // Hash the password with the generated salt
-        const hashedPassword = await bcrypt.hash(user_password, password_salt);
+        const hashedPassword = await bcrypt.hash(password, password_salt);
 
         // Create Admin using adminModel
         const createData = await adminModel.create(email, username, hashedPassword, password_salt, roleId, statusId);
 
         return res.status(201).json({
-            status: true,
+            success: true,
             statusCode: '201',
             message: 'Admin created successfully',
         });
@@ -26,7 +27,7 @@ adminController.create = async (req, res) => {
     } catch (error) {
         console.error('Error creating admin:', error);
         return res.status(500).json({
-            status: false,
+            success: false,
             statusCode: '500',
             message: 'Failed to create admin',
             error: error.message
@@ -37,7 +38,7 @@ adminController.create = async (req, res) => {
 // Get All Admins
 adminController.getAll = async (req, res) => {
     try {
-        const admins = await adminModel.getAll();
+        const admins = await adminModel.getAllAdmins();
         return res.status(200).json({
             success: true,
             statusCode: '200',
@@ -60,6 +61,9 @@ adminController.getById = async (req, res) => {
     try {
         const { id } = req.params;
         const admin = await adminModel.findById(id);
+        console.log(id);
+        console.log(admin.roleName);
+        
 
         if (admin) {
             return res.status(200).json({
@@ -106,17 +110,19 @@ adminController.update = async (req, res) => {
             updateData.password = hashedPassword; // Password dan salt hanya ditambahkan jika ada password baru
             updateData.password_salt = password_salt;
         }
-
+        console.log(updateData);
+        
         // Update admin using adminModel
         const updated = await adminModel.update(id, updateData);
 
         if (updated) {
-            const updatedAdmin = await adminModel.findById(id); // Dapatkan data admin yang telah diperbarui
+            console.log("updated");
+            
+            // const updatedAdmin = await adminModel.findById(id); // Dapatkan data admin yang telah diperbarui
             return res.status(200).json({
                 success: true,
                 statusCode: '200',
-                message: 'Admin updated successfully',
-                data: updatedAdmin
+                message: 'Admin updated successfully'
             });
         } else {
             return res.status(404).json({
@@ -142,8 +148,11 @@ adminController.delete = async (req, res) => {
     try {
         const { id } = req.params;
         const result = await adminModel.delete(id);
+console.log("ID ADMIN : ",id);
 
         if (result.affectedRows > 0) {
+            console.log("deleted");
+            
             return res.status(200).json({
                 success: true,
                 statusCode: '200',
@@ -216,5 +225,69 @@ adminController.getTotalTicketSold = async (req, res) => {
     }
 };
 
+//get admin by token
+adminController.getAdminByToken = async (req, res) => {
+    try {
+        const adminId = req.admin.id; // Ambil ID dari token
+        console.log("ADMIN ID:", adminId);
+        
+        const admin = await adminModel.findByIdAdmin(adminId); // Ambil data admin lengkap
+        if (!admin) {
+            return res.status(404).json({ success: false, message: 'Admin not found' });
+        }
+        console.log(admin);
+
+        // Kirim respons dengan informasi lengkap
+        return res.status(200).json({
+            success: true,
+            id: admin.id,
+            username: admin.username,
+            email: admin.email,
+            roleName: admin.roleName,      // Kirim nama role
+            statusName: admin.statusName ,
+            createdAt:admin.createdAt // Kirim nama status
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+adminController.checkRoleByIdWithToken = async (req, res) => {
+    try {
+        // Ambil token dari header authorization
+        const adminId = req.admin.id;
+        console.log("admin id",adminId);
+        console.log("token: ",req.header.Authorization);
+        
+        
+        // Validasi jika adminId tidak ada
+        if (!adminId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Token is required!'
+            });
+        }
+
+        // Panggil fungsi di model untuk memeriksa role berdasarkan token
+        const role = await adminModel.checkRoleByIdWithToken(adminId);
+
+        // Kirim response jika berhasil
+        return res.status(200).json({
+            success: true,
+            message: 'Role fetched successfully!',
+            role: role.roleName
+        });
+
+    } catch (error) {
+        // Tangani error
+        console.error('Error:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
 
 module.exports = adminController;

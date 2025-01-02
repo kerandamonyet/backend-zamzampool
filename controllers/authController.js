@@ -22,6 +22,8 @@ authController.login = async (req, res) => {
         `, [email]);
 
         if (adminLogin.length === 0) {
+            console.log("admin not found");
+            
             return res.status(404).json({
                 success: false,
                 statusCode: '404',
@@ -48,23 +50,19 @@ authController.login = async (req, res) => {
                 id: admin.id,
                 email: admin.email,
                 role: admin.role_name,
+                name:admin.username
             },
             JWT_SECRET,
-            { expiresIn: '1h' }
+            { expiresIn: '12h' }
         );
+        console.log("login success");
+        
 
         return res.status(200).json({
             success: true,
             statusCode: '200',
             message: 'Login successful',
-            token,
-            admin: {
-                id: admin.id,
-                username: admin.username,
-                email: admin.email,
-                role: admin.role_name,
-                status: admin.status_type
-            }
+            token
         });
 
     } catch (error) {
@@ -77,5 +75,30 @@ authController.login = async (req, res) => {
         });
     }
 };
+
+authController.logout = async (req, res) => {
+    try {
+        // Ambil token dari header Authorization
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+
+        // Pastikan token tersedia
+        if (!token) {
+            return res.status(400).json({ error: 'Bad Request: Token is required' });
+        }
+
+        // Tambahkan token ke daftar blacklist
+        global.blacklistedTokens = global.blacklistedTokens || []; // Inisialisasi jika belum ada
+        global.blacklistedTokens.push(token); // Masukkan token ke daftar blacklist
+        console.log('Received token:', token);
+        console.log('Blacklisted Tokens:', global.blacklistedTokens);
+        
+        // Kirim respons sukses
+        res.status(200).json({success:true, message: 'Logout successful' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({success:false, error: 'Internal Server Error' });
+    }
+};
+
 
 module.exports = authController;

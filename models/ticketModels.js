@@ -1,4 +1,5 @@
 const connection = require('../config/db');
+const moment = require('moment');
 
 const Ticket = {
     create: (data, callback) => {
@@ -62,6 +63,74 @@ const Ticket = {
         });
     },
 
+    checkPaymentStatus: (id, callback) => {
+        const query = `SELECT payment_status FROM tickets WHERE id = ?`; // Gunakan ? sebagai placeholder untuk id
+        const params = [id];
+    
+        connection.query(query, params, (err, result) => {
+            if (err) {
+                console.error('Error checking ticket usage:', err);
+                return callback(err); // Kembalikan error jika terjadi masalah dalam query
+            }
+            if (result.length === 0) {
+                return callback(new Error('No ticket found')); // Jika tidak ada tiket ditemukan
+            }
+    
+            const ticket = result[0];
+            if (ticket.payment_status === 'pending') {
+                return callback(null, 'waiting for payment'); // Jangan gunakan Error jika tidak ada kesalahan
+            } else if (ticket.payment_status === 'completed') {
+                return callback(null, 'payment has been completed!'); // Kondisi sukses
+            } else {
+                return callback(new Error('Unknown payment status')); // Menangani status yang tidak dikenali
+            }
+        });
+    },    
+
+    checkTicketValidity: (id, callback) => {
+    const query = `SELECT payment_status, isUsed FROM tickets WHERE id = ?`;
+    const params = [id];
+
+    connection.query(query, params, (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return callback(err); // Jika terjadi error dalam query, kembalikan error
+        }
+
+        if (result.length === 0) {
+            return callback(new Error('No ticket found')); // Jika tiket tidak ditemukan
+        }
+
+        const ticket = result[0];
+
+        // Cek apakah tiket sudah dibayar dan belum digunakan
+        if (ticket.payment_status !== 'completed') {
+            return callback(new Error('Payment is not completed')); // Jika pembayaran belum selesai
+        }
+
+        if (ticket.isUsed === 'used') {
+            return callback(new Error('Ticket has already been used')); // Jika tiket sudah digunakan
+        }
+
+        if (ticket.isUsed === 'expired') {
+            return callback(new Error('Ticket has expired')); // Jika tiket sudah expired
+        }
+
+        // Jika tiket valid, update status tiket menjadi "used"
+        const updateQuery = `UPDATE tickets SET isUsed = 'used' WHERE id = ?`;
+        connection.query(updateQuery, [id], (err, result) => {
+            if (err) {
+                console.error('Error updating ticket usage to used:', err);
+                return callback(err); // Jika terjadi error saat update status tiket
+            }
+
+            // Mengembalikan hasil yang sesuai setelah update status tiket
+            return callback(null, 'Ticket is valid and marked as used');
+        });
+    });
+},
+
+
     getTicketById: (id, callback) => {
         const query = `SELECT * FROM tickets WHERE id = ?`;
         const params = [id];
@@ -109,9 +178,13 @@ const Ticket = {
     },
 
     updateTicketToExpired: (id, callback) => {
-        const query = `UPDATE tickets SET isUsed = 'expired' WHERE id = ?`;
+        const query = `
+            UPDATE tickets 
+            SET isUsed = 'expired' 
+            WHERE id = ? AND expired_date < NOW()
+        `;
         const params = [id];
-
+    
         connection.query(query, params, (err, result) => {
             if (err) {
                 console.error('Error updating ticket to expired:', err);
@@ -120,6 +193,42 @@ const Ticket = {
             callback(null, result);
         });
     },
+    
+    checkExpiredDate: (id, callback) => {
+        // Query untuk memeriksa apakah tiket sudah expired (lebih dari 7 hari sejak dibuat)
+        const query = `
+            SELECT id, expired_date, 
+                   CASE 
+                       WHEN DATE_ADD(expired_date, INTERVAL 7 DAY) < NOW() THEN 'expired' 
+                       ELSE 'not_used' 
+                   END AS isUsed
+            FROM tickets
+            WHERE id = ?
+        `;
+        const params = [id];
+    
+        connection.query(query, params, (err, result) => {
+            if (err) {
+                console.error('Error checking ticket expiry:', err);
+                return callback(err);
+            }
+    
+            // Periksa apakah tiket ditemukan
+            if (result.length === 0) {
+                return callback(null, { success: false, message: 'Ticket not found' });
+            }
+    
+            // Berikan hasil status tiket
+            const ticket = result[0];
+            callback(null, { 
+                success: true, 
+                message: `Ticket is ${ticket.isUsed}`, 
+                isUsed: ticket.isUsed, 
+                detail: ticket 
+            });
+        });
+    },
+    
 
     checkAndUpdateTicketUsage: (id, callback) => {
         const query = `SELECT isUsed, expired_date FROM tickets WHERE id = ?`;
@@ -140,8 +249,18 @@ const Ticket = {
             }
 
             const now = new Date();
-            if (new Date(ticket.expired_date) < now) {
-                return callback(new Error('Ticket has expired'));
+            const expiredDate = new Date(ticket.expired_date);
+            //if ticket expired
+            if (expiredDate < now) {
+                const expireQuery = `UPDATE tickets SET isUsed = 'expired' WHERE id = ?`;
+                connection.query(expireQuery, [id], (err) => {
+                    if (err) {
+                        console.error('Error updating ticket usage to expired:', err);
+                        return callback(err);
+                    }
+                    return callback(new Error('Ticket has expired'));
+                });
+                return;
             }
 
             // Update ticket status to used
@@ -154,7 +273,114 @@ const Ticket = {
                 callback(null, result);
             });
         });
+    },
+    getAllTickets: () => {
+        return new Promise((resolve, reject) => {
+            const query = `SELECT * FROM tickets`;
+    
+            connection.query(query, (err, result) => {
+                if (err) {
+                    console.error('Error fetching tickets', err);
+                    return reject(err); // Mengembalikan error jika query gagal
+                }
+                resolve(result); // Mengembalikan hasil query jika berhasil
+            });
+        });
+    }, 
+    
+    searchTicket : (keyword,callback) => {
+        const query = `
+        SELECT * 
+        FROM tickets
+        WHERE id LIKE ?
+        OR email LIKE ?
+        OR ticket_type LIKE ?
+        OR payment_status LIKE ?
+        OR isUsed LIKE ?
+        OR name LIKE ?
+    `;
+    const params = [`%${keyword}%`, `%${keyword}%`,`%${keyword}%`,`%${keyword}%`,`%${keyword}%`,`%${keyword}%`];
+    
+    connection.query(query, params, (err, results) => {
+        if (err) {
+            console.error('Error searching tickets:', err);
+            return callback(err);
+        }
+        callback(null, results);
+    });
+    },
+    deleteTicketById : (id,callback) => {
+        const query = `DELETE FROM tickets WHERE id = ?`
+
+        const param = id;
+        connection.query(query,param,(err,result) => {
+            if (err) {
+                console.error('Error deleting ticket:', err);
+                return callback(err);
+            }
+            callback(null,result);
+        });
+    },
+
+  // Fungsi untuk mengambil data dalam 1 hari terakhir
+//   getOneDayItems: (callback) => {
+//     const oneDayAgo = moment().subtract(1, 'days').format('YYYY-MM-DD HH:mm:ss');
+//     const query = 'SELECT * FROM tickets WHERE created_at >= ?';
+//     connection.query(query, [oneDayAgo], (err, results) => {
+//       if (err) return callback(err, null);
+//       callback(null, results);
+//     });
+//   },
+
+//   // Fungsi untuk mengambil data dalam 1 minggu terakhir
+//   getOneWeekItems: (callback) => {
+//     const oneWeekAgo = moment().subtract(1, 'weeks').format('YYYY-MM-DD HH:mm:ss');
+//     const query = 'SELECT * FROM tickets WHERE created_at >= ?';
+//     connection.query(query, [oneWeekAgo], (err, results) => {
+//       if (err) return callback(err, null);
+//       callback(null, results);
+//     });
+//   },
+
+//   // Fungsi untuk mengambil data dalam 1 bulan terakhir
+//   getOneMonthItems: (callback) => {
+//     const oneMonthAgo = moment().subtract(1, 'months').format('YYYY-MM-DD HH:mm:ss');
+//     const query = 'SELECT * FROM tickets WHERE created_at >= ?';
+//     connection.query(query, [oneMonthAgo], (err, results) => {
+//       if (err) return callback(err, null);
+//       callback(null, results);
+//     });
+//   }
+ // Fungsi untuk mengambil data berdasarkan filter dinamis
+ getFilteredItems: (filter, callback) => {
+    let dateFilter;
+
+    // Tentukan filter waktu berdasarkan parameter
+    switch (filter) {
+      case 'day':
+        dateFilter = moment().subtract(1, 'days').format('YYYY-MM-DD HH:mm:ss');
+        break;
+      case 'week':
+        dateFilter = moment().subtract(1, 'weeks').format('YYYY-MM-DD HH:mm:ss');
+        break;
+      case 'month':
+        dateFilter = moment().subtract(1, 'months').format('YYYY-MM-DD HH:mm:ss');
+        break;
+      case 'year': // Tambahkan opsi filter satu tahun
+        dateFilter = moment().subtract(1, 'years').format('YYYY-MM-DD HH:mm:ss');
+        break;
+      default:
+        return callback(new Error('Invalid filter'), null);
     }
+
+    // Query database dengan filter waktu yang dipilih
+    const query = 'SELECT * FROM tickets WHERE entry_date >= ?';
+    connection.query(query, [dateFilter], (err, results) => {
+      if (err) return callback(err, null);
+      callback(null, results);
+    });
+}
+
 };
 
 module.exports = Ticket;

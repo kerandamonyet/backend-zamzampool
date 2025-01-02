@@ -9,6 +9,7 @@ const Midtrans = require('midtrans-client');
 const QRcode = require('qrcode');
 
 const dotenv = require('dotenv');
+const { error } = require('console');
 dotenv.config();
 
 const TICKET_PRICES = {
@@ -332,3 +333,315 @@ exports.getOrderByOrderId = (req, res) => {
         });
     });
 };
+
+///////
+exports.getTicketById = async (req, res) => {
+    const { id } = req.params;
+
+    // Validasi ID untuk string alfanumerik dengan panjang minimum 1 karakter
+    const idPattern = /^[a-zA-Z0-9]+$/;
+    if (!id || !idPattern.test(id)) {
+        return res.status(400).json({ message: 'Invalid ticket ID format' });
+    }
+
+    try {
+        // Menggunakan fungsi findTicketById
+        const ticket = await findTicketById(id);
+
+        // Jika tiket tidak ditemukan
+        if (!ticket) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ticket not found',
+            });
+        }
+        console.log(ticket.name);
+        
+        // Jika tiket ditemukan, kirim respons sukses
+        res.status(200).json({
+            success: true,
+            data: ticket,
+        });
+    } catch (error) {
+        // Tangani error dari database atau proses lainnya
+        console.error('Error fetching ticket:', error.message);
+
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Server Error',
+        });
+    }
+};
+
+// Controller
+exports.updateTicketToExpired = (req, res) => {
+    const ticketId = req.params.id;
+    console.log(ticketId);
+    
+    // Validasi input untuk memastikan ID adalah angka
+    if (!ticketId) {
+        return res.status(400).json({
+            success: false,
+            message: 'ticket id not found.'
+        });
+    }
+
+    // Memanggil fungsi updateTicketToExpired dari model
+    Ticket.updateTicketToExpired(ticketId, (err, result) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'failed update ticket to expired',
+                error: err.message
+            });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'ticket has not expired yet'
+            });
+        }
+
+        // Berhasil memperbarui tiket
+        res.status(200).json({
+            success: true,
+            message: 'ticket successfuly set to expired'
+        });
+    });
+};
+
+
+exports.checkTicketValidity = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Mengambil detail tiket
+        const detail = await findTicketById(id);
+        if (detail.id === "no ticket found"){
+            return res.status(404).json({
+                success:false,
+                message:"no ticket found",
+                detail
+            });
+        }
+        // Periksa status pembayaran
+        if (detail.payment_status === "pending") {
+            return res.status(400).json({
+                success: false,
+                message: "Payment is not completed",
+                detail, // Tambahkan detail tiket
+            });
+        }
+        //periksa kadaluarsa tiket 7 hari dari sekarang 
+        const currentDate = new Date();
+        const sevenDays = currentDate.setDate(currentDate.getDate()-7);
+
+        //jika expired
+        if(detail.expired_date <= sevenDays){
+            const isUsed = "expired";
+            updateTicketUsage(id,isUsed); 
+            console.log(detail);
+            
+            return res.status(400).json({
+                success: false,
+                message: "ticket has been expired",
+                detail
+            });
+        }else {
+            // Periksa status penggunaan tiket
+            if (detail.isUsed === "used"){
+                return res.status(400).json({
+                    success: false,
+                    message: "ticket has been used",
+                    detail
+                });
+            }else if (detail.isUsed === "not_used"){
+                const isUsed = "used";
+                updateTicketUsage(id,isUsed);
+                return res.status(200).json({
+                    success: true,
+                    message: "ticket is valid",
+                    detail
+                });
+            }
+        }
+        // Jika semua kondisi gagal (tidak seharusnya terjadi)
+        return res.status(400).json({
+            success: false,
+            message: "Unknown ticket status",
+            detail, // Tambahkan detail tiket
+        });
+
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Server error",
+            detail: null, // Detail kosong jika error
+        });
+    }
+};
+
+exports.getAllTickets = async (req, res) => {
+    try {
+        const tickets = await Ticket.getAllTickets();
+        res.status(200).json({
+            success:true,
+            message:"success fetch tickets",
+            data:tickets
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch tickets' });
+    }
+};
+
+exports.search = (req, res) => {
+    const keyword = req.query.q || ''; // Ambil keyword dari query parameter
+    console.log(keyword);
+    
+    Ticket.searchTicket(keyword, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message,
+            });
+        }
+
+        // Jika tidak ada tiket yang ditemukan
+        if (results === 'No ticket found') {
+            return res.status(404).json({
+                success: false,
+                message: 'No ticket found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: results,
+        });
+    });
+};
+exports.deleteTicketById = (req,res) => {
+    const {id} = req.params;
+    console.log("ID TICKET:",id);
+    Ticket.deleteTicketById(id,(err,result)=>{
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                success: false,
+                message: 'Server error'
+            });
+        }
+
+        // Jika tidak ada tiket yang ditemukan
+        if (result.affectedRows == 0) {
+            console.log("no ticket found");
+            
+            return res.status(404).json({
+                success: false,
+                message: 'No ticket found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'successfuly deleted'
+        });
+    })
+    
+}
+
+// Controller untuk filter data berdasarkan parameter
+exports.filterByTime = (req, res) => {
+  const { filter } = req.query; // Ambil parameter filter dari URL
+console.log(filter);
+
+  Ticket.getFilteredItems(filter, (err, items) => {
+    if (err) {
+        console.error(err);
+        console.log(items);
+        
+      return res.status(500).json({
+        success:false,
+        message: `Error fetching data for ${filter} filter`,
+        data:items
+      });
+    }
+    console.log(items);
+    
+    res.json({
+        success:true,
+        message:`filter by 1 ${filter}`,
+        data:items
+    });
+  });
+};
+
+// Controller untuk filter data 1 hari terakhir
+// exports.filterOneDay = (req, res) => {
+//     Ticket.getOneDayItems((err, items) => {
+//       if (err) {
+//         return res.status(500).json({ message: 'Error fetching data for 1 day filter', error: err.message });
+//       }
+//       res.json(items);
+//     });
+//   };
+  
+//   // Controller untuk filter data 1 minggu terakhir
+// exports.filterOneWeek = (req, res) => {
+//     Ticket.getOneWeekItems((err, items) => {
+//       if (err) {
+//         return res.status(500).json({ message: 'Error fetching data for 1 week filter', error: err.message });
+//       }
+//       res.json(items);
+//     });
+//   };
+  
+//   // Controller untuk filter data 1 bulan terakhir
+// exports.filterOneMonth = (req, res) => {
+//     Ticket.getOneMonthItems((err, items) => {
+//       if (err) {
+//         return res.status(500).json({ message: 'Error fetching data for 1 month filter', error: err.message });
+//       }
+//       res.json(items);
+//     });
+//   };
+
+///////
+//promise untuk mendukung fungsi lain
+const findTicketById = (id) => {
+    return new Promise((resolve, reject) => {
+        Ticket.getTicketById(id, (err, result) => {
+            if (err) {
+                reject(err); // Tolak Promise jika terjadi error
+            } else {
+                resolve(result); // Selesaikan Promise dengan hasil
+            }
+        });
+    });
+};
+// Fungsi updateTicketUsage dengan Promise
+const updateTicketUsage = (id, status) => {
+    return new Promise((resolve, reject) => {
+        Ticket.updateTicketUsage(id,status,(err,result) => {
+            if (err) {
+                reject(err); // Tolak Promise jika terjadi error
+            } else {
+                resolve(result); // Selesaikan Promise dengan hasil
+            }
+        })
+    });
+}
+// const updateTicketToExpired = (id, update) => {
+//     return new Promise((resolve, reject) => {
+//         Ticket.updateTicketToExpired(id, update,(err, result) => {
+//             if (err) {
+//                 reject(err); // Tolak Promise jika terjadi error
+//             } else {
+//                 resolve(result); // Selesaikan Promise dengan hasil
+//             }
+//         });
+//     });
+// }
