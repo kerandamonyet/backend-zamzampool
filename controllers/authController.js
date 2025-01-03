@@ -32,6 +32,15 @@ authController.login = async (req, res) => {
         }
 
         const admin = adminLogin[0]; // Ambil admin pertama dari hasil query
+        //jika akun nonactive
+        if(admin.status_type == "inactive"){
+            console.log("inactive");
+            return res.status(403).json({
+                success: false,
+                statusCode: '403',
+                message: 'Account is inactive. Please contact support.',
+            });
+        }
 
         // Bandingkan password yang diinput dengan yang ada di database
         const isPasswordValid = await bcrypt.compare(password, admin.user_password);
@@ -99,6 +108,9 @@ authController.logout = async (req, res) => {
         res.status(500).json({success:false, error: 'Internal Server Error' });
     }
 };
+// authController.checkLogin = async (req,res) => {
+//     const token = req.header('Authorization')?.replace('Bearer ', '');
+// }
 
 
 module.exports = authController;
